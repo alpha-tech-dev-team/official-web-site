@@ -27,9 +27,9 @@ namespace ApplicationsApi.Models
 
         public ApplicationStatus Status { get; set; } = ApplicationStatus.Draft;
 
-        public Dictionary<string, JsonElement> Data { get; set; } = new Dictionary<string, JsonElement>();
+        public Dictionary<string,  JsonElement> Data { get; set; } = new Dictionary<string, JsonElement>();
 
-        public int TemplateVersion { get; set; } = 1;
+        public int TemplateVersion { get;  set; } = 1;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? SubmittedAt { get; set; }
