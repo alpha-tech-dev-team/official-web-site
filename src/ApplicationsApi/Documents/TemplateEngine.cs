@@ -4,7 +4,6 @@ namespace ApplicationsApi.Documents;
 
 public static class TemplateEngine
 {
-    // Ищет метки вида {{ имя }}
     private static readonly Regex Placeholder =
         new(@"\{\{\s*([\w.\-]+)\s*\}\}", RegexOptions.Compiled);
 
