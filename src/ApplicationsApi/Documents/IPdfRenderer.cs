@@ -24,8 +24,6 @@ public class QuestPdfRenderer : IPdfRenderer
             {
                 page.Size(PageSizes.A4);
                 page.Margin(2, Unit.Centimetre);
-                // QuestPDF 2026.9+ не подхватывает системные шрифты: Arial недоступен,
-                // поэтому используем встроенный Lato (поддерживает кириллицу).
                 page.DefaultTextStyle(style => style.FontSize(12).FontFamily("Lato"));
 
                 page.Content().Column(column =>
