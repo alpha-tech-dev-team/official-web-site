@@ -1,0 +1,12 @@
+ЗАЯВЛЕНИЕ № {{number}}
+
+Дата подачи: {{submittedAt}}
+
+Заявитель: {{applicantName}}
+Телефон: {{phoneFormatted}}
+
+Курс: {{data.course}}
+Дата рождения ребёнка: {{data.childBirthDate}}
+Комментарий: {{data.comment}}
+
+Документ сформирован: {{generatedAt}}
