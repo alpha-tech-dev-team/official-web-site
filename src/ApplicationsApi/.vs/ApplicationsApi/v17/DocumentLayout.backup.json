@@ -1,0 +1,69 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\work\\official-web-site\\src\\ApplicationsApi\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{CAFDBB17-BAA5-83D7-5FDA-746896464DC3}|ApplicationsApi.csproj|c:\\work\\official-web-site\\src\\applicationsapi\\documents\\templateengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CAFDBB17-BAA5-83D7-5FDA-746896464DC3}|ApplicationsApi.csproj|solutionrelative:documents\\templateengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CAFDBB17-BAA5-83D7-5FDA-746896464DC3}|ApplicationsApi.csproj|c:\\work\\official-web-site\\src\\applicationsapi\\applicationsapi.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{CAFDBB17-BAA5-83D7-5FDA-746896464DC3}|ApplicationsApi.csproj|solutionrelative:applicationsapi.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 4,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3822e751-eb69-4b0e-b301-595a9e4c74d5}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{0ad07096-bba9-4900-a651-0598d26f6d24}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "TemplateEngine.cs",
+              "DocumentMoniker": "C:\\work\\official-web-site\\src\\ApplicationsApi\\Documents\\TemplateEngine.cs",
+              "RelativeDocumentMoniker": "Documents\\TemplateEngine.cs",
+              "ToolTip": "C:\\work\\official-web-site\\src\\ApplicationsApi\\Documents\\TemplateEngine.cs",
+              "RelativeToolTip": "Documents\\TemplateEngine.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-25T20:45:46.079Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ApplicationsApi.csproj",
+              "DocumentMoniker": "C:\\work\\official-web-site\\src\\ApplicationsApi\\ApplicationsApi.csproj",
+              "RelativeDocumentMoniker": "ApplicationsApi.csproj",
+              "ToolTip": "C:\\work\\official-web-site\\src\\ApplicationsApi\\ApplicationsApi.csproj",
+              "RelativeToolTip": "ApplicationsApi.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-10-25T19:00:19.956Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
