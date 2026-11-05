@@ -1,0 +1,14 @@
+Заявление на курс
+
+Заявитель: {{applicantName}}
+Телефон: {{phoneFormatted}}
+
+Номер: {{number}}
+Статус: {{status}}
+Дата подачи: {{submittedAt}}
+
+Курс: {{data.course}}
+Дата рождения: {{data.birthDate}}
+Комментарий: {{data.comment}}
+
+Документ сформирован: {{generatedAt}}

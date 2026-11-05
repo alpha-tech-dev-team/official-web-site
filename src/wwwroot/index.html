@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Демо: заявки и верификация</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; max-width: 1200px; }
+  h1 { font-size: 22px; } h2 { font-size: 18px; margin-top: 30px; }
+  section { border: 1px solid #ccc; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+  input, button { padding: 6px 8px; margin: 3px; font-size: 14px; }
+  button { cursor: pointer; }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+  th, td { border: 1px solid #ddd; padding: 6px; font-size: 13px; text-align: left; }
+  .st { padding: 2px 8px; border-radius: 10px; font-size: 12px; color: #fff; }
+  .draft { background: gray; } .submitted { background: #2196F3; }
+  .pending { background: orange; } .verified { background: green; }
+  .failed, .expired { background: red; }
+  #msg { color: darkred; } pre { background: #f5f5f5; padding: 10px; white-space: pre-wrap; }
+  .link a { color: #2196F3; word-break: break-all; }
+</style>
+</head>
+<body>
+<h1>Демо: заявки и верификация телефона через Telegram</h1>
+
+<section>
+  <b>Вход админа</b> (admin / admin12345):
+  <input id="login" placeholder="логин">
+  <input id="password" type="password" placeholder="пароль">
+  <button onclick="login()">Войти</button>
+  <button onclick="logout()">Выйти</button>
+  <span id="authState"></span>
+</section>
+
+<section>
+  <b>Новая заявка</b>
+  <div>
+    <input id="name" placeholder="ФИО" style="width:300px">
+    <input id="phone" placeholder="+375 29 123-45-67" style="width:200px">
+  </div>
+  <div>
+    <input id="course" placeholder="Курс">
+    <input id="comment" placeholder="Комментарий">
+    <button onclick="createApp()">Создать</button>
+  </div>
+  <div id="msg" style="color:darkred"></div>
+</section>
+
+<section>
+  <h2 style="margin-top:0">Заявки</h2>
+  <button onclick="loadApps()">Обновить</button>
+  <table id="appsTable">
+    <thead>
+      <tr><th>#</th><th>ФИО</th><th>Телефон</th><th>Курс</th><th>Статус</th><th>Действия</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<section>
+  <h2 style="margin-top:0">Верификации</h2>
+  <div id="sessions"></div>
+</section>
+
+<section>
+  <h2 style="margin-top:0">Предпросмотр документа</h2>
+  <pre id="preview">здесь появится текст заявления...</pre>
+</section>
+
+<script>
+const apiKey = 'savedPhones';
+
+function authHeaders() { return { 'Authorization': 'Bearer ' + localStorage.getItem('token') }; }
+
+function msg(text) { document.getElementById('msg').textContent = text || ''; }
+
+async function login() {
+  const r = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ login: loginField.value, password: passwordField.value })
+  });
+  if (!r.ok) { authState.textContent = 'неверный логин/пароль'; return; }
+  const d = await r.json();
+  localStorage.setItem('token', d.token);
+  authState.textContent = 'вход выполнен';
+  loadApps();
+}
+
+function logout() { localStorage.removeItem('token'); authState.textContent = 'не авторизован'; loadApps(); }
+
+async function createApp() {
+  msg('');
+  const body = {
+    applicantName: nameInput.value,
+    phone: phoneInput.value,
+    data: { course: courseInput.value, comment: commentInput.value }
+  };
+  const r = await fetch('/api/applications', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (!r.ok) { msg(JSON.stringify(d.errors || d, null, 2)); return; }
+  const saved = JSON.parse(localStorage.getItem(apiKey) || '{}');
+  saved[d.id] = phoneInput.value;
+  localStorage.setItem(apiKey, JSON.stringify(saved));
+  localStorage.setItem('lastApp', d.id);
+  loadApps();
+}
+
+async function loadApps() {
+  const tbody = document.querySelector('#appsTable tbody');
+  tbody.innerHTML = '';
+  if (!localStorage.getItem('token')) {
+    authState.textContent = 'не авторизован';
+    tbody.innerHTML = '<tr><td colspan="6">войдите как админ</td></tr>';
+    return;
+  }
+  const r = await fetch('/api/admin/applications', { headers: authHeaders() });
+  if (!r.ok) { tbody.innerHTML = '<tr><td colspan="6">ошибка загрузки</td></tr>'; return; }
+  const list = await r.json();
+  list.reverse().forEach((a, i) => {
+    const tr = document.createElement('tr');
+    const submitted = a.status !== 'draft';
+    tr.innerHTML =
+      '<td>' + (i + 1) + '</td>' +
+      '<td>' + esc(a.applicantName) + '</td>' +
+      '<td>' + esc(a.phone) + '</td>' +
+      '<td>' + esc(a.data.course || '—') + '</td>' +
+      '<td><span class="st ' + a.status + '">' + a.status + (a.number ? ' ' + a.number : '') + '</span></td>' +
+      '<td>' +
+        (submitted ? '' : ' <button onclick="submitApp(\'' + a.id + '\')">Подать</button>') +
+        ' <button onclick="startVerification(\'' + a.id + '\')">Верификация</button>' +
+        ' <button onclick="preview(\'' + a.id + '\')">Текст</button>' +
+        (submitted ? ' <button onclick="downloadPdf(\'' + a.id + '\')">PDF</button>' : '') +
+      '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+async function submitApp(id) {
+  await fetch('/api/applications/' + id + '/submit', { method: 'POST' });
+  loadApps();
+}
+
+async function startVerification(id) {
+  msg('');
+  const saved = JSON.parse(localStorage.getItem(apiKey) || '{}');
+  const phone = saved[id] || prompt('Телефон заявки:');
+  if (!phone) return;
+  const r = await fetch('/api/verification/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ applicationId: id, phone })
+  });
+  const d = await r.json();
+  if (!r.ok) { msg(JSON.stringify(d.errors || d, null, 2)); return; }
+  addSession(d.sessionId, d.link);
+}
+
+function addSession(sessionId, link) {
+  const div = document.createElement('div');
+  div.className = 'link';
+  div.id = 's_' + sessionId;
+  div.innerHTML = '<span class="st pending">pending</span> <a href="' + link + '" target="_blank">' + link + '</a>' +
+    ' <button onclick="copyToClipboard(\'' + link + '\')">Копировать ссылку</button>';
+  document.getElementById('sessions').prepend(div);
+  poll(div, sessionId);
+}
+
+async function poll(div, sessionId) {
+  const r = await fetch('/api/verification/' + sessionId);
+  if (!r.ok) return;
+  const d = await r.json();
+  const badge = div.querySelector('.st');
+  badge.className = 'st ' + d.status;
+  badge.textContent = d.status + (d.reason ? ' (' + d.reason + ')' : '');
+  if (d.status === 'pending') setTimeout(() => poll(div, sessionId), 2000);
+}
+
+async function preview(id) {
+  const r = await fetch('/api/admin/applications/' + id + '/preview', { headers: authHeaders() });
+  if (!r.ok) { msg('не удалось получить текст'); return; }
+  document.getElementById('preview').textContent = await r.text();
+}
+
+async function downloadPdf(id) {
+  const r = await fetch('/api/admin/applications/' + id + '/pdf', { headers: authHeaders() });
+  if (!r.ok) { msg('не удалось получить PDF'); return; }
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'application-' + id + '.pdf';
+  a.click();
+}
+
+async function copyToClipboard(text) { await navigator.clipboard.writeText(text); }
+
+function esc(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>
