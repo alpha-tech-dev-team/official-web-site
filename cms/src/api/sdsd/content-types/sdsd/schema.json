@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sdsds",
+  "info": {
+    "singularName": "sdsd",
+    "pluralName": "sdsds",
+    "displayName": "Course"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "blocks"
+    },
+    "ageGroup": {
+      "type": "string"
+    },
+    "price": {
+      "type": "decimal"
+    },
+    "photo": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "isActive": {
+      "type": "boolean"
+    }
+  }
+}
