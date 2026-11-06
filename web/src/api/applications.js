@@ -12,10 +12,11 @@ export function clearToken() {
   localStorage.removeItem('token')
 }
 
-async function request(path, { method = 'GET', body } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
+async function request(path, { method = 'GET', body, auth = true } = {}) {
+  const headers = {}
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
   const token = getToken()
-  if (token) headers.Authorization = `Bearer ${token}`
+  if (auth && token) headers.Authorization = `Bearer ${token}`
 
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
@@ -56,6 +57,18 @@ export function startVerification(applicationId, phone) {
 
 export function fetchVerificationStatus(sessionId) {
   return request(`/api/verification/${sessionId}`)
+}
+
+export function fetchPublicVerification(code) {
+  return request(`/api/public/verification/${encodeURIComponent(code)}`, { auth: false })
+}
+
+export function cancelApplication(id) {
+  return request(`/api/admin/applications/${id}/cancel`, { method: 'POST' })
+}
+
+export function changeApplicationPhone(id, phone) {
+  return request(`/api/admin/applications/${id}/phone`, { method: 'PUT', body: { phone } })
 }
 
 export function previewApplication(id) {

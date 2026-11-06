@@ -13,6 +13,13 @@ public class InMemoryPhoneVerificationRepository : IPhoneVerificationRepository
         return Task.CompletedTask;
     }
 
+    public Task<IReadOnlyList<PhoneVerification>> ListByApplicationAsync(Guid applicationId) =>
+        Task.FromResult<IReadOnlyList<PhoneVerification>>(
+            _items.Values
+                .Where(x => x.ApplicationId == applicationId)
+                .OrderByDescending(x => x.VerifiedAt)
+                .ToList());
+
     public Task<IReadOnlyList<PhoneVerification>> ListAsync() =>
         Task.FromResult<IReadOnlyList<PhoneVerification>>(
             _items.Values.OrderBy(x => x.VerifiedAt).ToList());

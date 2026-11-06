@@ -5,6 +5,9 @@ namespace ApplicationsApi.Services;
 
 public static class CodeGenerator
 {
+    public const int PublicCodeLength = 16;
+    public const string PublicCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
     public static string NewToken() =>
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
             .Replace('+', '-')
@@ -16,9 +19,8 @@ public static class CodeGenerator
 
     public static string NewPublicCode()
     {
-        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        var bytes = RandomNumberGenerator.GetBytes(8);
+        var bytes = RandomNumberGenerator.GetBytes(PublicCodeLength);
 
-        return new string(bytes.Select(b => alphabet[b % alphabet.Length]).ToArray());
+        return new string(bytes.Select(b => PublicCodeAlphabet[b % PublicCodeAlphabet.Length]).ToArray());
     }
 }

@@ -6,6 +6,7 @@ namespace ApplicationsApi.Services;
 public interface IApplicationRepository
 {
     Task<Application?> GetAsync(Guid id);
+    Task<Application?> GetByPublicCodeAsync(string publicCode);
     Task AddAsync(Application application);
     Task UpdateAsync(Application application);
     Task<string> NextNumberAsync();
@@ -15,13 +16,28 @@ public interface IApplicationRepository
 public class InMemoryApplicationRepository : IApplicationRepository
 {
     private readonly ConcurrentDictionary<Guid, Application> _items = new();
+    private readonly object _gate = new();
 
     public Task<Application?> GetAsync(Guid id) =>
         Task.FromResult(_items.TryGetValue(id, out var application) ? application : null);
 
+    public Task<Application?> GetByPublicCodeAsync(string publicCode) =>
+        Task.FromResult<Application?>(_items.Values.FirstOrDefault(x =>
+            string.Equals(x.PublicCode, publicCode, StringComparison.Ordinal)));
+
     public Task AddAsync(Application application)
     {
-        _items[application.Id] = application;
+        lock (_gate)
+        {
+            while (_items.Values.Any(x =>
+                       string.Equals(x.PublicCode, application.PublicCode, StringComparison.Ordinal)))
+            {
+                application.PublicCode = CodeGenerator.NewPublicCode();
+            }
+
+            _items[application.Id] = application;
+        }
+
         return Task.CompletedTask;
     }
 

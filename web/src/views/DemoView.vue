@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
   login as apiLogin,
   setToken,
@@ -12,6 +13,8 @@ import {
   fetchVerificationStatus,
   previewApplication,
   downloadPdf,
+  cancelApplication,
+  changeApplicationPhone,
 } from '../api/applications.js'
 
 const loginField = ref('')
@@ -61,10 +64,13 @@ function doLogout() {
 async function onCreate() {
   message.value = ''
   try {
-    await createApplication(nameField.value, phoneField.value, {
+    const created = await createApplication(nameField.value, phoneField.value, {
       course: courseField.value,
       comment: commentField.value,
     })
+    const saved = JSON.parse(localStorage.getItem('phones') ?? '{}')
+    saved[created.id] = phoneField.value
+    localStorage.setItem('phones', JSON.stringify(saved))
     await loadApplications()
   } catch (e) {
     message.value = typeof e === 'object' ? JSON.stringify(e.errors ?? e, null, 2) : String(e)
@@ -78,6 +84,34 @@ async function onSubmit(id) {
     await loadApplications()
   } catch (e) {
     message.value = e.error ?? 'Ошибка подачи'
+  }
+}
+
+async function onChangePhone(app) {
+  const phone = prompt('Новый телефон заявки:', '')
+  if (!phone) return
+
+  message.value = ''
+  try {
+    await changeApplicationPhone(app.id, phone)
+    const saved = JSON.parse(localStorage.getItem('phones') ?? '{}')
+    saved[app.id] = phone
+    localStorage.setItem('phones', JSON.stringify(saved))
+    await loadApplications()
+  } catch (e) {
+    message.value = typeof e === 'object' ? JSON.stringify(e.errors ?? e, null, 2) : String(e)
+  }
+}
+
+async function onCancel(app) {
+  if (!confirm(`Отменить заявку ${app.number ?? app.publicCode}?`)) return
+
+  message.value = ''
+  try {
+    await cancelApplication(app.id)
+    await loadApplications()
+  } catch (e) {
+    message.value = e.error ?? 'Ошибка отмены'
   }
 }
 
@@ -158,20 +192,21 @@ onMounted(loadApplications)
     <table class="apps">
       <thead>
         <tr>
-          <th>#</th><th>ФИО</th><th>Телефон</th><th>Курс</th><th>Статус</th><th>Действия</th>
+          <th>#</th><th>ФИО</th><th>Телефон</th><th>Код</th><th>Курс</th><th>Статус</th><th>Действия</th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="!authorized">
-          <td colspan="6">войдите как админ, чтобы видеть заявки</td>
+          <td colspan="7">войдите как админ, чтобы видеть заявки</td>
         </tr>
         <tr v-else-if="applications.length === 0">
-          <td colspan="6">заявок нет — создайте выше</td>
+          <td colspan="7">заявок нет — создайте выше</td>
         </tr>
         <tr v-for="(a, i) in applications" v-else :key="a.id">
           <td>{{ i + 1 }}</td>
           <td>{{ a.applicantName }}</td>
           <td>{{ a.phone }}</td>
+          <td><code class="public-code">{{ a.publicCode }}</code></td>
           <td>{{ a.data?.course ?? '—' }}</td>
           <td>
             <span :class="['badge', a.status]">
@@ -180,9 +215,23 @@ onMounted(loadApplications)
           </td>
           <td>
             <button v-if="a.status === 'draft'" @click="onSubmit(a.id)">Подать</button>
-            <button @click="onStartVerification(a)">Верификация</button>
+            <button
+              v-if="a.status !== 'cancelled' && a.status !== 'rejected'"
+              @click="onStartVerification(a)"
+            >Верификация</button>
             <button @click="onPreview(a.id)">Текст</button>
             <button v-if="a.status !== 'draft'" @click="onDownloadPdf(a.id)">PDF</button>
+            <button
+              v-if="a.status !== 'cancelled' && a.status !== 'rejected'"
+              @click="onChangePhone(a)"
+            >Сменить телефон</button>
+            <button v-if="a.status !== 'cancelled'" @click="onCancel(a)">Отменить</button>
+            <RouterLink
+              class="verify-link"
+              :to="{ name: 'public-verify', params: { code: a.publicCode } }"
+              target="_blank"
+              rel="noopener"
+            >Проверить</RouterLink>
           </td>
         </tr>
       </tbody>
@@ -254,9 +303,21 @@ button {
 .badge.submitted { background: #2196f3; }
 .badge.pending { background: orange; }
 .badge.verified { background: green; }
+.badge.cancelled { background: #6b7280; }
+.badge.rejected,
 .badge.failed,
 .badge.expired,
 .badge.lost { background: red; }
+.public-code {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.verify-link {
+  display: inline-block;
+  padding: 6px 12px;
+  margin-left: 4px;
+  color: var(--accent);
+}
 .session {
   display: flex;
   align-items: center;

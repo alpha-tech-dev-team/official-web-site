@@ -7,6 +7,8 @@ public record ApplicationRequest(
     string? Phone,
     Dictionary<string, JsonElement>? Data);
 
+public record ChangePhoneRequest(string? Phone);
+
 public class ApplicationResponse
 {
     public Guid Id { get; init; }

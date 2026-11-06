@@ -6,7 +6,7 @@ namespace ApplicationsApi.Documents;
 
 public static class ApplicationValues
 {
-    public static Dictionary<string, string> From(Application a)
+    public static Dictionary<string, string> From(Application a, string? verifyUrl = null)
     {
         var values = new Dictionary<string, string>
         {
@@ -18,6 +18,8 @@ public static class ApplicationValues
             ["createdAt"] = FormatDate(a.CreatedAt),
             ["submittedAt"] = FormatDate(a.SubmittedAt),
             ["generatedAt"] = FormatDate(DateTime.UtcNow),
+            ["verifyUrl"] = verifyUrl ?? "",
+            ["qr"] = verifyUrl is null ? "—" : $"[QR-код] {verifyUrl}",
         };
 
         foreach (var (key, value) in a.Data)

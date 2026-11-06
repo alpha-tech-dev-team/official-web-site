@@ -29,8 +29,16 @@ builder.Services.AddSingleton<IApplicationRepository, InMemoryApplicationReposit
 builder.Services.AddSingleton<IVerificationSessionRepository, InMemoryVerificationSessionRepository>();
 builder.Services.AddSingleton<IPhoneVerificationRepository, InMemoryPhoneVerificationRepository>();
 builder.Services.AddSingleton<VerificationService>();
+builder.Services.AddSingleton<PublicVerificationService>();
 builder.Services.AddSingleton<ITemplateStore, FileTemplateStore>();
 builder.Services.AddSingleton<IPdfRenderer, QuestPdfRenderer>();
+
+var publicVerifyBaseUrl = Environment.GetEnvironmentVariable("PUBLIC_VERIFY_BASE_URL");
+if (string.IsNullOrWhiteSpace(publicVerifyBaseUrl))
+    publicVerifyBaseUrl = "http://localhost:5173";
+
+builder.Services.AddSingleton<IPublicVerifyUrlBuilder>(new PublicVerifyUrlBuilder(publicVerifyBaseUrl));
+builder.Services.AddSingleton<IQrCodeGenerator, QrCoderQrCodeGenerator>();
 builder.Services.AddSingleton(new AdminStore(adminLogin, adminPassword));
 builder.Services.AddSingleton(new TokenService(jwtKey));
 builder.Services.AddSingleton(new TelegramOptions(botToken));
@@ -89,6 +97,16 @@ builder.Services.AddRateLimiter(o =>
             }));
 
     o.AddPolicy("verification-status", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    o.AddPolicy("public-verification", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
@@ -208,6 +226,16 @@ app.MapGet("/api/verification/{sessionId:guid}", async (Guid sessionId, IVerific
         status.ToString().ToLowerInvariant(), session.Reason, session.ExpiresAt));
 }).RequireRateLimiting("verification-status");
 
+app.MapGet("/api/public/verification/{code}", async (
+    string code, PublicVerificationService verification, HttpResponse response) =>
+{
+    response.Headers["Cache-Control"] = "no-store";
+    response.Headers["Pragma"] = "no-cache";
+
+    var verified = await verification.IsVerifiedAsync(code);
+    return Results.Ok(new PublicVerificationResponse(verified));
+}).RequireRateLimiting("public-verification");
+
 var admin = app.MapGroup("/api/admin").RequireAuthorization("Admin");
 
 admin.MapGet("/applications", async (IApplicationRepository repo) =>
@@ -219,19 +247,60 @@ admin.MapGet("/applications/{id:guid}", async (Guid id, IApplicationRepository r
     return entity is null ? Results.NotFound() : Results.Ok(ApplicationResponse.From(entity));
 });
 
+admin.MapPut("/applications/{id:guid}/phone", async (
+    Guid id, ChangePhoneRequest req, IApplicationRepository repo) =>
+{
+    var entity = await repo.GetAsync(id);
+    if (entity is null) return Results.NotFound();
+
+    if (entity.Status is ApplicationStatus.Cancelled or ApplicationStatus.Rejected)
+        return Results.Conflict(new { error = "Для отменённой или отклонённой заявки номер изменить нельзя" });
+
+    var phone = Phone.Normalize(req.Phone);
+    if (phone is null)
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["phone"] = new[] { "Введите белорусский мобильный номер, например +375 29 123-45-67" }
+        });
+
+    entity.Phone = phone;
+    entity.UpdatedAt = DateTime.UtcNow;
+    await repo.UpdateAsync(entity);
+
+    return Results.Ok(ApplicationResponse.From(entity));
+});
+
+admin.MapPost("/applications/{id:guid}/cancel", async (Guid id, IApplicationRepository repo) =>
+{
+    var entity = await repo.GetAsync(id);
+    if (entity is null) return Results.NotFound();
+
+    if (entity.Status == ApplicationStatus.Cancelled)
+        return Results.Conflict(new { error = "Заявка уже отменена" });
+
+    entity.Status = ApplicationStatus.Cancelled;
+    entity.UpdatedAt = DateTime.UtcNow;
+    await repo.UpdateAsync(entity);
+
+    return Results.Ok(ApplicationResponse.From(entity));
+});
+
 admin.MapGet("/applications/{id:guid}/preview", async (
-    Guid id, IApplicationRepository repo, ITemplateStore templates) =>
+    Guid id, IApplicationRepository repo, ITemplateStore templates, IPublicVerifyUrlBuilder verifyUrl) =>
 {
     var entity = await repo.GetAsync(id);
     if (entity is null) return Results.NotFound();
 
     var template = templates.Load(entity.TemplateVersion);
-    var text = TemplateEngine.Render(template, ApplicationValues.From(entity));
+    var url = verifyUrl.Build(entity.PublicCode);
+    var text = TemplateEngine.Render(template, ApplicationValues.From(entity, url));
+
     return Results.Text(text, "text/plain; charset=utf-8");
 });
 
 admin.MapGet("/applications/{id:guid}/pdf", async (
-    Guid id, IApplicationRepository repo, ITemplateStore templates, IPdfRenderer pdf) =>
+    Guid id, IApplicationRepository repo, ITemplateStore templates, IPdfRenderer pdf,
+    IPublicVerifyUrlBuilder verifyUrl, IQrCodeGenerator qrCodes) =>
 {
     var entity = await repo.GetAsync(id);
     if (entity is null) return Results.NotFound();
@@ -239,8 +308,14 @@ admin.MapGet("/applications/{id:guid}/pdf", async (
         return Results.Conflict(new { error = "Заявка ещё не подана, печатать нечего" });
 
     var template = templates.Load(entity.TemplateVersion);
-    var text = TemplateEngine.Render(template, ApplicationValues.From(entity));
-    return Results.File(pdf.Render(text), "application/pdf");
+    var url = verifyUrl.Build(entity.PublicCode);
+    var text = TemplateEngine.Render(
+        template,
+        ApplicationValues.From(entity, url),
+        new HashSet<string> { "qr" });
+
+    var qr = new PdfQrBlock(qrCodes.GeneratePng(url), url);
+    return Results.File(pdf.Render(text, qr), "application/pdf");
 });
 
 admin.MapGet("/verification-sessions", async (IVerificationSessionRepository sessions) =>
